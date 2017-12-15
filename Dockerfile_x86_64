@@ -1,0 +1,31 @@
+ARG ARCH=frommakefile
+ARG DOCKERSRC=frommakefile
+ARG USERNAME=frommakefile
+#
+FROM ${USERNAME}/${DOCKERSRC}:${ARCH}
+RUN apk add --no-cache --purge -uU curl && \
+    mkdir -p /glibc && \
+	GLIBC_URL='https://github.com/sgerrand/alpine-pkg-glibc/releases/download' && \
+    GLIBC_VERSION='2.26-r0' && \
+    GLIBC_KEY='https://raw.githubusercontent.com/sgerrand/alpine-pkg-glibc/master/sgerrand.rsa.pub' && \
+	curl \
+		-jkSLN ${GLIBC_KEY} \
+		-o /etc/apk/keys/sgerrand.rsa.pub && \
+	curl \
+	    -jkSLN ${GLIBC_URL}/${GLIBC_VERSION}/glibc-${GLIBC_VERSION}.apk \
+		-o /glibc/glibc-${GLIBC_VERSION}.apk && \
+	curl \
+	    -jsSLN ${GLIBC_URL}/${GLIBC_VERSION}/glibc-bin-${GLIBC_VERSION}.apk \
+		-o /glibc/glibc-bin-${GLIBC_VERSION}.apk && \
+	curl \
+		-jkSLN ${GLIBC_URL}/${GLIBC_VERSION}/glibc-i18n-${GLIBC_VERSION}.apk \
+		-o /glibc/glibc-i18n-${GLIBC_VERSION}.apk && \
+	apk add --no-cache /glibc/*.apk; \
+	/usr/glibc-compat/bin/localedef --force --inputfile POSIX --charmap UTF-8 C.UTF-8 || true && \
+	echo "export LANG=C.UTF-8" > /etc/profile.d/locale.sh && \
+	/usr/glibc-compat/sbin/ldconfig /lib /usr/glibc-compat/lib && \
+	echo 'hosts: files mdns4_minimal [NOTFOUND=return] dns mdns4' >> /etc/nsswitch.conf && \
+	apk del --purge curl glibc-i18n && \
+	rm -rf /var/cache/apk/* /tmp/* /glibc /etc/apk/keys/sgerrand.rsa.pub
+# ENTRYPOINT ["/init"]
+# ENTRYPOINT ["/bin/bash"]
