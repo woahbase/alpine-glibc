@@ -59,7 +59,8 @@ architecture, e.g for an x86_64 machine..
 # make
 docker run --rm -it \
   --name docker_glibc --hostname glibc \
-  woahbase/alpine-glibc:x86_64
+  woahbase/alpine-glibc:x86_64 \
+  bash
 
 # make stop
 docker stop -t 2 docker_glibc
