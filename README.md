@@ -12,8 +12,8 @@ Based on [Alpine Linux][131] from my [alpine-s6][132] image with
 the [s6][133] init system [overlayed][134] in it.
 
 The image is tagged respectively for the following architectures,
-* **armhf** - GLibC sourced from [chrisanthropic][136]
-* **x86_64** - GLibC sourced from [sgerrand][135]
+* **armhf** - GLibC from [chrisanthropic][136]
+* **x86_64** - GLibC from [sgerrand][135] ( retagged as the `latest` )
 
 **armhf** builds have embedded binfmt_misc support and contain the
 [qemu-user-static][105] binary that allows for running it also inside
