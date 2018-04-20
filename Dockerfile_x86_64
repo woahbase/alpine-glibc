@@ -6,7 +6,8 @@ FROM ${USERNAME}/${DOCKERSRC}:${ARCH}
 RUN apk add --no-cache --purge -uU curl && \
     mkdir -p /glibc && \
 	GLIBC_URL='https://github.com/sgerrand/alpine-pkg-glibc/releases/download' && \
-    GLIBC_VERSION='2.26-r0' && \
+    GLIBC_VERSION="$(curl -SL https://api.github.com/repos/sgerrand/alpine-pkg-glibc/releases/latest | awk '/tag_name/{print $4;exit}' FS='[""]' | sed -e 's_v__')" && \
+    echo "Using GLIBC Version: $GLIBC_VERSION" && \
     GLIBC_KEY='https://raw.githubusercontent.com/sgerrand/alpine-pkg-glibc/master/sgerrand.rsa.pub' && \
 	curl \
 		-jkSLN ${GLIBC_KEY} \
