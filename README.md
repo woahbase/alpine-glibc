@@ -51,6 +51,8 @@ Running `make` gets a shell.
 
 ```
 # make
+# or
+# make shell
 docker run --rm -it \
   --name docker_glibc --hostname glibc \
   woahbase/alpine-glibc:x86_64 \
@@ -86,14 +88,14 @@ docker restart docker_glibc
 Get a shell inside a already running container,
 
 ```
-# make shell
+# make debug
 docker exec -it docker_glibc /bin/bash
 ```
 
 set user or login as root,
 
 ```
-# make rshell
+# make rdebug
 docker exec -u root -it docker_glibc /bin/bash
 ```
 
