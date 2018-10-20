@@ -8,10 +8,22 @@ RUN apk add --no-cache --purge -uU curl && \
 	GLIBC_URL='https://github.com/sgerrand/alpine-pkg-glibc/releases/download' && \
     GLIBC_VERSION="$(curl -SL https://api.github.com/repos/sgerrand/alpine-pkg-glibc/releases/latest | awk '/tag_name/{print $4;exit}' FS='[""]' | sed -e 's_v__')" && \
     echo "Using GLIBC Version: $GLIBC_VERSION" && \
-    GLIBC_KEY='https://raw.githubusercontent.com/sgerrand/alpine-pkg-glibc/master/sgerrand.rsa.pub' && \
-	curl \
-		-jkSLN ${GLIBC_KEY} \
-		-o /etc/apk/keys/sgerrand.rsa.pub && \
+#    GLIBC_KEY='https://raw.githubusercontent.com/sgerrand/alpine-pkg-glibc/master/sgerrand.rsa.pub' && \
+#	curl \
+#		-jkSLN ${GLIBC_KEY} \
+#		-o /etc/apk/keys/sgerrand.rsa.pub && \
+#
+    echo \
+        "-----BEGIN PUBLIC KEY-----\
+        MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApZ2u1KJKUu/fW4A25y9m\
+        y70AGEa/J3Wi5ibNVGNn1gT1r0VfgeWd0pUybS4UmcHdiNzxJPgoWQhV2SSW1JYu\
+        tOqKZF5QSN6X937PTUpNBjUvLtTQ1ve1fp39uf/lEXPpFpOPL88LKnDBgbh7wkCp\
+        m2KzLVGChf83MS0ShL6G9EQIAUxLm99VpgRjwqTQ/KfzGtpke1wqws4au0Ab4qPY\
+        KXvMLSPLUp7cfulWvhmZSegr5AdhNw5KNizPqCJT8ZrGvgHypXyiFvvAH5YRtSsc\
+        Zvo9GI2e2MaZyo9/lvb+LbLEJZKEQckqRj4P26gmASrZEPStwc+yqy1ShHLA0j6m\
+        1QIDAQAB\
+        -----END PUBLIC KEY-----" | sed 's/   */\n/g' > "/etc/apk/keys/sgerrand.rsa.pub" && \
+
 	curl \
 	    -jkSLN ${GLIBC_URL}/${GLIBC_VERSION}/glibc-${GLIBC_VERSION}.apk \
 		-o /glibc/glibc-${GLIBC_VERSION}.apk && \
