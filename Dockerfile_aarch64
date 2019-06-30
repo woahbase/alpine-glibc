@@ -7,21 +7,21 @@ RUN set -xe \
     && mkdir -p /glibc \
     && GLIBC_VERSION="$(curl -SL https://api.github.com/repos/SatoshiPortal/alpine-pkg-glibc/releases/latest | awk '/tag_name/{print $4;exit}' FS='[""]' | sed -e 's_v__')" \
     && echo "Using GLIBC Version: ${GLIBC_VERSION}" \
-    && GLIBC_KEY='https://github.com/SatoshiPortal/alpine-pkg-glibc/releases/download/${GLIBC_VERSION}/cyphernode@satoshiportal.com.rsa.pub' \
+    && GLIBC_KEY="https://github.com/SatoshiPortal/alpine-pkg-glibc/releases/download/${GLIBC_VERSION}/cyphernode@satoshiportal.com.rsa.pub" \
     && GLIBC_URL='https://github.com/SatoshiPortal/alpine-pkg-glibc/releases/download' \
     && curl \
-        -jkSLN ${GLIBC_KEY} \
+        -jkSL ${GLIBC_KEY} \
         -o /etc/apk/keys/cyphernode@satoshiportal.com.rsa.pub \
     && curl \
-        -jkSLN ${GLIBC_URL}/${GLIBC_VERSION}/glibc-${GLIBC_VERSION}-aarch64.apk \
+        -jkSL ${GLIBC_URL}/${GLIBC_VERSION}/glibc-${GLIBC_VERSION}-aarch64.apk \
         -o /glibc/glibc-${GLIBC_VERSION}.apk \
     && curl \
-        -jkSLN ${GLIBC_URL}/${GLIBC_VERSION}/glibc-bin-${GLIBC_VERSION}-aarch64.apk \
+        -jkSL ${GLIBC_URL}/${GLIBC_VERSION}/glibc-bin-${GLIBC_VERSION}-aarch64.apk \
         -o /glibc/glibc-bin-${GLIBC_VERSION}.apk \
     && curl \
-        -jkSLN ${GLIBC_URL}/${GLIBC_VERSION}/glibc-i18n-${GLIBC_VERSION}-aarch64.apk \
+        -jkSL ${GLIBC_URL}/${GLIBC_VERSION}/glibc-i18n-${GLIBC_VERSION}-aarch64.apk \
         -o /glibc/glibc-i18n-${GLIBC_VERSION}.apk \
-    && apk add --no-cache /glibc/*.apk; \
+    && apk add --update --no-cache /glibc/*.apk; \
     /usr/glibc-compat/bin/localedef --force --inputfile POSIX --charmap UTF-8 C.UTF-8 || true \
     && echo "export LANG=C.UTF-8" > /etc/profile.d/locale.sh \
     && /usr/glibc-compat/sbin/ldconfig /lib /usr/glibc-compat/lib \
