@@ -13,13 +13,13 @@ RUN set -xe \
         -jkSLN ${GLIBC_KEY} \
         -o /etc/apk/keys/cyphernode@satoshiportal.com.rsa.pub \
     && curl \
-        -jkSLN ${GLIBC_URL}/${GLIBC_VERSION}/glibc-${GLIBC_VERSION}-armhf.apk \
+        -jkSLN ${GLIBC_URL}/${GLIBC_VERSION}/glibc-${GLIBC_VERSION}-aarch64.apk \
         -o /glibc/glibc-${GLIBC_VERSION}.apk \
     && curl \
-        -jkSLN ${GLIBC_URL}/${GLIBC_VERSION}/glibc-bin-${GLIBC_VERSION}-armhf.apk \
+        -jkSLN ${GLIBC_URL}/${GLIBC_VERSION}/glibc-bin-${GLIBC_VERSION}-aarch64.apk \
         -o /glibc/glibc-bin-${GLIBC_VERSION}.apk \
     && curl \
-        -jkSLN ${GLIBC_URL}/${GLIBC_VERSION}/glibc-i18n-${GLIBC_VERSION}-armhf.apk \
+        -jkSLN ${GLIBC_URL}/${GLIBC_VERSION}/glibc-i18n-${GLIBC_VERSION}-aarch64.apk \
         -o /glibc/glibc-i18n-${GLIBC_VERSION}.apk \
     && apk add --no-cache /glibc/*.apk; \
     /usr/glibc-compat/bin/localedef --force --inputfile POSIX --charmap UTF-8 C.UTF-8 || true \
