@@ -12,6 +12,8 @@ nsswitch.conf
 ld.so.conf"
 subpackages="$pkgname-bin $pkgname-dev $pkgname-i18n"
 triggers="$pkgname-bin.trigger=/lib:/usr/lib:/usr/glibc-compat/lib"
+makedepends=""
+options="!check" # No test suite
 
 package() {
   mkdir -p "$pkgdir/lib" "$pkgdir/usr/glibc-compat/lib/locale" "$pkgdir"/usr/glibc-compat/lib "$pkgdir"/usr/glibc-compat/lib64 "$pkgdir"/etc
@@ -35,7 +37,7 @@ package() {
 }
 
 bin() {
-  depends="$pkgname bash gcompat libgcc"
+  depends="$pkgname bash libgcc"
   mkdir -p "$subpkgdir"/usr/glibc-compat
   cp -a "$srcdir"/usr/glibc-compat/bin "$subpkgdir"/usr/glibc-compat
   # bash might not be needed on alpine, should override BASH_SHELL on glibc build

@@ -79,10 +79,11 @@ ENV \
     GLIBCVERSION=${GLIBCVERSION} \
     REPODEST=/packages
 #
-RUN mkdir -p ${ABUILD_KEY_DIR} \
-    && openssl genrsa -out ${ABUILD_KEY_DIR}/${PACKAGER}.key 2048 \
-    && openssl rsa -in ${ABUILD_KEY_DIR}/${PACKAGER}.key -pubout -out ${ABUILD_KEY_DIR}/${PACKAGER}.key.pub \
-    && echo "PACKAGER_PRIVKEY=\"${ABUILD_KEY_DIR}/${PACKAGER}.key\"" > ${ABUILD_KEY_DIR}/abuild.conf \
+RUN mkdir -p ${ABUILD_KEY_DIR} ${REPODEST}/builder \
+    && openssl genrsa -out ${ABUILD_KEY_DIR}/${PACKAGER}.rsa 2048 \
+    && openssl rsa -in ${ABUILD_KEY_DIR}/${PACKAGER}.rsa -pubout -out ${ABUILD_KEY_DIR}/${PACKAGER}.rsa.pub \
+    && cp ${ABUILD_KEY_DIR}/${PACKAGER}.rsa.pub /etc/apk/keys/${PACKAGER}.rsa.pub \
+    && echo "PACKAGER_PRIVKEY=\"${ABUILD_KEY_DIR}/${PACKAGER}.rsa\"" > ${ABUILD_KEY_DIR}/abuild.conf \
     && sed -i "s/<\${GLIBCVERSION}-checksum>/$(cat glibc-bin-${GLIBCVERSION}.sha512sum | awk '{print $1}')/" APKBUILD \
     && abuild -r \
     && find ${REPODEST}
@@ -102,12 +103,12 @@ COPY --from=glibc-alpine-builder /packages/builder/${GLIBCARCH}/glibc-bin-${GLIB
 COPY --from=glibc-alpine-builder /packages/builder/${GLIBCARCH}/glibc-i18n-${GLIBCVERSION}-r${GLIBC_RELEASE}.apk /tmp/
 #
 RUN set -xe \
-    && apk add -Uu --no-cache libstdc++ curl \
+    && apk add -Uu --no-cache libstdc++ \
     && apk add --allow-untrusted /tmp/glibc-*.apk \
     && ( /usr/glibc-compat/bin/localedef --force --inputfile POSIX --charmap UTF-8 C.UTF-8 || true ) \
     && echo "export LANG=C.UTF-8" > /etc/profile.d/locale.sh \
     && /usr/glibc-compat/sbin/ldconfig /lib /usr/glibc-compat/lib \
-    && echo 'hosts: files mdns4_minimal [NOTFOUND=return] dns mdns4' > /etc/nsswitch.conf \
+    # && echo 'hosts: files mdns4_minimal [NOTFOUND=return] dns mdns4' > /etc/nsswitch.conf \
     && rm -rf /var/cache/apk/* /tmp/*
     # /etc/apk/keys/${PACKAGER}.rsa.pub
 # }}} --
