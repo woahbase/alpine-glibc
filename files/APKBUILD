@@ -35,7 +35,7 @@ package() {
 }
 
 bin() {
-  depends="$pkgname bash libgcc"
+  depends="$pkgname bash gcompat libgcc"
   mkdir -p "$subpkgdir"/usr/glibc-compat
   cp -a "$srcdir"/usr/glibc-compat/bin "$subpkgdir"/usr/glibc-compat
   # bash might not be needed on alpine, should override BASH_SHELL on glibc build
