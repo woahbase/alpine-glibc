@@ -24,6 +24,7 @@ RUN set -xe \
     && mkdir -p /glibc/build \
     && echo "Using GLIBC Version: $GLIBCVERSION" \
     && curl \
+        --retry 3 --retry-all-errors \
         -jSLN https://ftpmirror.gnu.org/glibc/glibc-${GLIBCVERSION}.tar.gz \
 	    -o /tmp/glibc-${GLIBCVERSION}.tar.gz \
 	# TODO: source verification steps

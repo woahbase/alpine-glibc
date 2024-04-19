@@ -12,7 +12,9 @@ ARG IMAGEBASE=frommakefile
 FROM ${IMAGEBASE} AS raspberry-pi-os-legacy-lite-getter
 RUN apk add curl \
     && mkdir /rootfs \
-    && curl -fSL https://downloads.raspberrypi.org/raspios_lite_armhf/root.tar.xz | tar xJ -C /rootfs
+    && curl \
+        --retry 3 --retry-all-errors \
+        -fSL https://downloads.raspberrypi.org/raspios_lite_armhf/root.tar.xz | tar xJ -C /rootfs
 #
 FROM scratch AS baseimage
 COPY --from=raspberry-pi-os-legacy-lite-getter /rootfs/ /
@@ -35,6 +37,7 @@ RUN set -xe \
     && mkdir -p /glibc/build \
     && echo "Using GLIBC Version: $GLIBCVERSION" \
     && curl \
+        --retry 3 --retry-all-errors \
         -jSLN https://ftpmirror.gnu.org/glibc/glibc-${GLIBCVERSION}.tar.gz \
 	    -o /tmp/glibc-${GLIBCVERSION}.tar.gz \
 	# TODO: source verification steps
