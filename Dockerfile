@@ -1,27 +1,16 @@
 # syntax=docker/dockerfile:1
 # reference:
 #   https://www.gnu.org/software/libc/manual/html_node/Installation.html
-#   https://github.com/jvasileff/docker-glibc-armhf-builder/blob/master/Dockerfile
 #   https://github.com/sgerrand/docker-glibc-builder/issues/20
 #   https://github.com/Lauri-Nomme/alpine-glibc-xb/blob/master/Dockerfile
 #   https://github.com/jvasileff/alpine-pkg-glibc-armhf/blob/master/build-with-docker.sh
 #
+ARG COMPILERSRC=ubuntu:latest
 ARG IMAGEBASE=frommakefile
 #
-# {{{ -- download and use raspbian legacy rootfs as baseimage
-FROM ${IMAGEBASE} AS raspberry-pi-os-legacy-lite-getter
-RUN apk add curl \
-    && mkdir /rootfs \
-    && curl -fSL https://downloads.raspberrypi.org/raspios_lite_armhf/root.tar.xz | tar xJ -C /rootfs
-#
-FROM scratch AS baseimage
-COPY --from=raspberry-pi-os-legacy-lite-getter /rootfs/ /
-RUN set -xe \
-    && uname -a
-# }}} --
-#
 # {{{ -- fetch and compile source using ubuntu image
-FROM baseimage as glibc-compiler
+FROM ${COMPILERSRC} as glibc-compiler
+#
 ARG GLIBCVERSION=2.31
 ARG NPROC=6
 #
@@ -45,7 +34,6 @@ RUN set -xe \
         --libdir=${PREFIX_DIR}/lib \
         --libexecdir=${PREFIX_DIR}/lib \
         # --enable-multi-arch \
-        --host=armv6-linux \
         --enable-stack-protector=strong \
     && make -j${NPROC} \
     && make install \
@@ -127,4 +115,4 @@ RUN set -xe \
 ENV PATH=/usr/glibc-compat/sbin:/usr/glibc-compat/bin:${PATH}
 #
 # ENTRYPOINT ["/init"]
-# ENTRYPOINT ["/bin/bash"]
+# CMD ["/bin/bash"]
