@@ -92,9 +92,9 @@ ENV \
     REPODEST=/packages
 #
 RUN mkdir -p ${ABUILD_KEY_DIR} \
-    && openssl genrsa -out ${ABUILD_KEY_DIR}/${PACKAGER}-key.pem 2048 \
-    && openssl rsa -in ${ABUILD_KEY_DIR}/${PACKAGER}-key.pem -pubout -out /etc/apk/keys/${PACKAGER}.rsa.pub \
-    && echo "PACKAGER_PRIVKEY=\"${ABUILD_KEY_DIR}/${PACKAGER}-key.pem\"" > ${ABUILD_KEY_DIR}/abuild.conf \
+    && openssl genrsa -out ${ABUILD_KEY_DIR}/${PACKAGER}.key 2048 \
+    && openssl rsa -in ${ABUILD_KEY_DIR}/${PACKAGER}.key -pubout -out ${ABUILD_KEY_DIR}/${PACKAGER}.key.pub \
+    && echo "PACKAGER_PRIVKEY=\"${ABUILD_KEY_DIR}/${PACKAGER}.key\"" > ${ABUILD_KEY_DIR}/abuild.conf \
     && sed -i "s/<\${GLIBCVERSION}-checksum>/$(cat glibc-bin-${GLIBCVERSION}.sha512sum | awk '{print $1}')/" APKBUILD \
     && abuild -r \
     && find ${REPODEST}
