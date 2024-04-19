@@ -104,7 +104,7 @@ COPY --from=glibc-alpine-builder /packages/builder/${GLIBCARCH}/glibc-i18n-${GLI
 #
 RUN set -xe \
     && apk add -Uu --no-cache libstdc++ \
-    && apk add --allow-untrusted /tmp/glibc-*.apk \
+    && apk add --allow-untrusted --force-overwrite /tmp/glibc-*.apk \
     && ( /usr/glibc-compat/bin/localedef --force --inputfile POSIX --charmap UTF-8 C.UTF-8 || true ) \
     && echo "export LANG=C.UTF-8" > /etc/profile.d/locale.sh \
     && /usr/glibc-compat/sbin/ldconfig /lib /usr/glibc-compat/lib \
