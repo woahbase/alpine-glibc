@@ -10,7 +10,10 @@ ARG IMAGEBASE=frommakefile
 #
 # {{{ -- download and use raspbian legacy rootfs as baseimage
 FROM ${IMAGEBASE} AS raspberry-pi-os-legacy-lite-getter
-RUN apk add curl \
+RUN set -xe \
+    && apk add \
+        curl \
+        xz \
     && mkdir /rootfs \
     && curl \
         --retry 3 --retry-all-errors \
@@ -39,10 +42,10 @@ RUN set -xe \
     && curl \
         --retry 3 --retry-all-errors \
         -jSLN https://ftpmirror.gnu.org/glibc/glibc-${GLIBCVERSION}.tar.gz \
-	    -o /tmp/glibc-${GLIBCVERSION}.tar.gz \
-	# TODO: source verification steps
-	&& tar xzf /tmp/glibc-${GLIBCVERSION}.tar.gz -C /glibc --strip 1 \
-	&& cd /glibc/build \
+        -o /tmp/glibc-${GLIBCVERSION}.tar.gz \
+    # TODO: source verification steps
+    && tar xzf /tmp/glibc-${GLIBCVERSION}.tar.gz -C /glibc --strip 1 \
+    && cd /glibc/build \
     && /glibc/configure \
         --prefix=${PREFIX_DIR} \
         --libdir=${PREFIX_DIR}/lib \
@@ -94,7 +97,8 @@ ENV \
     GLIBCVERSION=${GLIBCVERSION} \
     REPODEST=/packages
 #
-RUN mkdir -p ${ABUILD_KEY_DIR} ${REPODEST}/builder \
+RUN set -xe \
+    && mkdir -p ${ABUILD_KEY_DIR} ${REPODEST}/builder \
     && openssl genrsa -out ${ABUILD_KEY_DIR}/${PACKAGER}.rsa 2048 \
     && openssl rsa -in ${ABUILD_KEY_DIR}/${PACKAGER}.rsa -pubout -out ${ABUILD_KEY_DIR}/${PACKAGER}.rsa.pub \
     && cp ${ABUILD_KEY_DIR}/${PACKAGER}.rsa.pub /etc/apk/keys/${PACKAGER}.rsa.pub \
