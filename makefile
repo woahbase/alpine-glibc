@@ -23,12 +23,15 @@ CNTNAME   := docker_$(SVCNAME)
 CNTSHELL  := /bin/bash
 
 GLIBCVERSION ?= $(call get_glibc_version)
+NPROC     := $(shell echo $$(($$(nproc)-2)))
 
 TESTCMD   := \
 	uname -a; \
 	bash --version; \
 	ldd --version; \
 	#
+
+SKIP_loong64 := 1
 # -- }}}
 
 # {{{ -- flags
@@ -61,9 +64,10 @@ BUILDFLAGS ?= \
 	$(CACHEFLAGS) \
 	$(LABELFLAGS) \
 	--build-arg APKBUILD=$(APKBUILD) \
-	--build-arg GLIBCARCH=$(call get_src_arch) \
+	--build-arg GLIBCARCH=$(call get_apkbuild_arch) \
 	--build-arg GLIBCVERSION=$(if $(GLIBCVERSION),$(GLIBCVERSION),$(error GLIBCVERSION is not defined)) \
 	--build-arg IMAGEBASE=$(IMAGEBASE) \
+	--build-arg NPROC=$(NPROC) \
 	--build-arg http_proxy=$(http_proxy) \
 	--build-arg https_proxy=$(https_proxy) \
 	--build-arg no_proxy=$(no_proxy) \
@@ -72,7 +76,7 @@ BUILDFLAGS ?= \
 	--force-rm \
 	--rm \
 	--tag $(IMAGETAG) \
-	# --build-arg COMPILERSRC=ubuntu:latest \
+	# --build-arg COMPILERIMAGE=ubuntu:latest \
 	#
 
 # following applies if and when using buildx
@@ -145,11 +149,12 @@ debug : ## shell into container as user
 stop : ## stop container
 	docker stop -t 2 $(CNTNAME)
 
-test : regbinfmt
+test : inbinfmt
 test : ## run test command, i.e. TESTCMD
 	if [ -z "$(SKIP_TEST_$(ARCH))" ] && [ -z "$(SKIP_TEST)" ] && [ -z "$(SKIP_$(ARCH))" ]; \
 	then \
 		docker run --rm -it --pull=never \
+			$(call get_docker_platform) \
 			$(RUNFLAGS) \
 			--entrypoint $(CNTSHELL) \
 			$(IMAGETAG) \
@@ -162,7 +167,7 @@ test : ## run test command, i.e. TESTCMD
 # -- }}}
 
 # {{{ -- image targets
-build : regbinfmt
+build : inbinfmt
 build : BUILDX := $(shell docker buildx version 1>/dev/null 2>&1 && echo 'present' || echo 'absent')
 build : ## build image
 	if [ -z "$(SKIP_$(ARCH))" ]; \
@@ -189,6 +194,8 @@ build : ## build image
 		echo "Skipping build: $(IMAGETAG)."; \
 	fi;
 
+clean : ARCH = *
+clean : unbinfmt
 clean : ## cleanup
 	docker images -a --format '{{.Repository}}:{{.Tag}}' \
 		| grep "$(ORGNAME)/$(REPONAME)" \
@@ -296,25 +303,26 @@ push_registry_% : ## push image to a different registry
 # manifest: SKIP_armhf=
 # if tagname != latest, use $(ARCH)_$(TAGNAME) to annotate, else just $(ARCH)
 # manifest: TAGNAME = latest
+manifest: TAGSLIST ?= \
+	$(if $(SKIP_x86_64),,$(subst $(ARCH),x86_64$(if $(subst latest,,$(TAGNAME)),_$(TAGNAME),),$(IMAGETAG))) \
+	$(if $(SKIP_aarch64),,$(subst $(ARCH),aarch64$(if $(subst latest,,$(TAGNAME)),_$(TAGNAME),),$(IMAGETAG))) \
+	$(if $(SKIP_armv7l),,$(subst $(ARCH),armv7l$(if $(subst latest,,$(TAGNAME)),_$(TAGNAME),),$(IMAGETAG))) \
+	$(if $(SKIP_armhf),,$(subst $(ARCH),armhf$(if $(subst latest,,$(TAGNAME)),_$(TAGNAME),),$(IMAGETAG))) \
+	$(if $(SKIP_i386),,$(subst $(ARCH),i386$(if $(subst latest,,$(TAGNAME)),_$(TAGNAME),),$(IMAGETAG))) \
+	$(if $(SKIP_loong64),,$(subst $(ARCH),loong64$(if $(subst latest,,$(TAGNAME)),_$(TAGNAME),),$(IMAGETAG))) \
+	$(if $(SKIP_ppc64le),,$(subst $(ARCH),ppc64le$(if $(subst latest,,$(TAGNAME)),_$(TAGNAME),),$(IMAGETAG))) \
+	$(if $(SKIP_riscv64),,$(subst $(ARCH),riscv64$(if $(subst latest,,$(TAGNAME)),_$(TAGNAME),),$(IMAGETAG))) \
+	$(if $(SKIP_s390x),,$(subst $(ARCH),s390x$(if $(subst latest,,$(TAGNAME)),_$(TAGNAME),),$(IMAGETAG))) \
+	#
 manifest: ## create or update image(s) manifest
 	if [ -z "$(SKIP_ANNOTATE)" ]; \
 	then \
 		MANIFESTTAG=$(subst $(ARCH),$(TAGNAME),$(IMAGETAG)); \
 		docker manifest inspect $${MANIFESTTAG} > /dev/null 2>&1; \
 		if [ $$? != 0 ]; then docker manifest create \
-			$${MANIFESTTAG} \
-			$(if $(SKIP_x86_64),,$(subst $(ARCH),x86_64$(if $(subst latest,,$(TAGNAME)),_$(TAGNAME),),$(IMAGETAG))) \
-			$(if $(SKIP_aarch64),,$(subst $(ARCH),aarch64$(if $(subst latest,,$(TAGNAME)),_$(TAGNAME),),$(IMAGETAG))) \
-			$(if $(SKIP_armv7l),,$(subst $(ARCH),armv7l$(if $(subst latest,,$(TAGNAME)),_$(TAGNAME),),$(IMAGETAG))) \
-			$(if $(SKIP_armhf),,$(subst $(ARCH),armhf$(if $(subst latest,,$(TAGNAME)),_$(TAGNAME),),$(IMAGETAG))) \
-			;\
+			$${MANIFESTTAG} $(TAGSLIST); \
 		else docker manifest create --amend \
-			$${MANIFESTTAG} \
-			$(if $(SKIP_x86_64),,$(subst $(ARCH),x86_64$(if $(subst latest,,$(TAGNAME)),_$(TAGNAME),),$(IMAGETAG))) \
-			$(if $(SKIP_aarch64),,$(subst $(ARCH),aarch64$(if $(subst latest,,$(TAGNAME)),_$(TAGNAME),),$(IMAGETAG))) \
-			$(if $(SKIP_armv7l),,$(subst $(ARCH),armv7l$(if $(subst latest,,$(TAGNAME)),_$(TAGNAME),),$(IMAGETAG))) \
-			$(if $(SKIP_armhf),,$(subst $(ARCH),armhf$(if $(subst latest,,$(TAGNAME)),_$(TAGNAME),),$(IMAGETAG))) \
-			;\
+			$${MANIFESTTAG} $(TAGSLIST); \
 		fi; \
 	else \
 		echo "Skipping manifest: $(IMAGETAG)."; \
@@ -351,6 +359,31 @@ annotate: ## annotate image(s) os/arch in manifest
 				$${MANIFESTTAG} \
 				$(subst $(ARCH),armhf$(if $(subst latest,,$(TAGNAME)),_$(TAGNAME),),$(IMAGETAG)); \
 		fi; \
+		if [ -z "$(SKIP_i386)" ]; then \
+			docker manifest annotate $(call get_manifest_platform,i386) \
+				$${MANIFESTTAG} \
+				$(subst $(ARCH),i386$(if $(subst latest,,$(TAGNAME)),_$(TAGNAME),),$(IMAGETAG)); \
+		fi; \
+		if [ -z "$(SKIP_loong64)" ]; then \
+			docker manifest annotate $(call get_manifest_platform,loong64) \
+				$${MANIFESTTAG} \
+				$(subst $(ARCH),loong64$(if $(subst latest,,$(TAGNAME)),_$(TAGNAME),),$(IMAGETAG)); \
+		fi; \
+		if [ -z "$(SKIP_ppc64le)" ]; then \
+			docker manifest annotate $(call get_manifest_platform,ppc64le) \
+				$${MANIFESTTAG} \
+				$(subst $(ARCH),ppc64le$(if $(subst latest,,$(TAGNAME)),_$(TAGNAME),),$(IMAGETAG)); \
+		fi; \
+		if [ -z "$(SKIP_riscv64)" ]; then \
+			docker manifest annotate $(call get_manifest_platform,riscv64) \
+				$${MANIFESTTAG} \
+				$(subst $(ARCH),riscv64$(if $(subst latest,,$(TAGNAME)),_$(TAGNAME),),$(IMAGETAG)); \
+		fi; \
+		if [ -z "$(SKIP_s390x)" ]; then \
+			docker manifest annotate $(call get_manifest_platform,s390x) \
+				$${MANIFESTTAG} \
+				$(subst $(ARCH),s390x$(if $(subst latest,,$(TAGNAME)),_$(TAGNAME),),$(IMAGETAG)); \
+		fi; \
 		docker manifest push -p $${MANIFESTTAG}; \
 	else \
 		echo "Skipping annotate: $(IMAGETAG)."; \
@@ -379,18 +412,36 @@ regbinfmt : ## register binfmt for multiarch on x86_64
 	fi;
 	# credential=yes needed to run sudo inside container at build time, else effective UID is non-zero
 
+inbinfmt : BINFMTIMAGE ?= $(REGISTRY)/tonistiigi/binfmt
+inbinfmt : ## install binfmt for $(ARCH) on $(HOSTARCH)
+	if [ "$(ARCH)" != "$(HOSTARCH)" ]; then \
+		docker run --rm --privileged $(BINFMTIMAGE) --install "$(call get_binfmt_arch)"; \
+	fi;
+	#
+# unbinfmt : ARCH ?= *# to uninstall all emulators
+unbinfmt : BINFMTIMAGE ?= $(REGISTRY)/tonistiigi/binfmt
+unbinfmt : ## uninstall binfmt for $(ARCH) on $(HOSTARCH)
+	if [ "$(ARCH)" != "$(HOSTARCH)" ]; then \
+		docker run --rm --privileged $(BINFMTIMAGE) --uninstall "$(call get_binfmt_arch)"; \
+	fi;
+	#
+
 help : ## show this help
 	@sed -ne '/@sed/!s/## /|/p' $(MAKEFILE_LIST) | sed -e's/\W*:\W*=/:/g' | column -et -c 3 -s ':|?=' #| sort -h
-
 # -- }}}
 
 # {{{ -- functions
 # maps os platform to docker tags when building on $(HOSTARCH) for $(ARCH)
 OS_PLATFORM_MAP := \
-       'aarch64') echo -n 'aarch64';; \
-       'armv6l' ) echo -n 'armhf'  ;; \
-       'armv7l' ) echo -n 'armv7l' ;; \
-       'x86_64' ) echo -n 'x86_64' ;; \
+	'aarch64'    ) echo -n 'aarch64' ;; \
+	'armv6l'     ) echo -n 'armhf'   ;; \
+	'armv7l'     ) echo -n 'armv7l'  ;; \
+	'i386'       ) echo -n 'i386'    ;; \
+	'loongarch64') echo -n 'loong64' ;; \
+	'ppc64le'    ) echo -n 'ppc64le' ;; \
+	'riscv64'    ) echo -n 'riscv64' ;; \
+	's390x'      ) echo -n 's390x'   ;; \
+	'x86_64'     ) echo -n 'x86_64'  ;; \
        #
 define get_os_platform
 $(shell case "$$(uname -m)" in $(OS_PLATFORM_MAP) esac)
@@ -398,10 +449,15 @@ endef
 
 # sets docker platform when building for $(ARCH)
 DOCKER_PLATFORM_MAP := \
-	'aarch64') echo -n '--platform linux/arm64' ;; \
-	'armhf'  ) echo -n '--platform linux/arm/v6';; \
-	'armv7l' ) echo -n '--platform linux/arm/v7';; \
-	'x86_64' ) echo -n '--platform linux/amd64' ;; \
+	'aarch64' ) echo -n '--platform linux/arm64'   ;; \
+	'armhf'   ) echo -n '--platform linux/arm/v6'  ;; \
+	'armv7l'  ) echo -n '--platform linux/arm/v7'  ;; \
+	'i386'    ) echo -n '--platform linux/386'     ;; \
+	'loong64' ) echo -n '--platform linux/loong64' ;; \
+	'ppc64le' ) echo -n '--platform linux/ppc64le' ;; \
+	'riscv64' ) echo -n '--platform linux/riscv64' ;; \
+	's390x'   ) echo -n '--platform linux/s390x'   ;; \
+	'x86_64'  ) echo -n '--platform linux/amd64'   ;; \
 	#
 define get_docker_platform
 $(shell case "$(ARCH)" in $(DOCKER_PLATFORM_MAP) esac)
@@ -409,45 +465,72 @@ endef
 
 # sets docker manifest annotation when building for $(ARCH)
 MANIFEST_PLATFORM_MAP := \
-	'aarch64') echo -n '--os linux --arch arm64';; \
-	'armhf'  ) echo -n '--os linux --arch arm --variant v6';; \
-	'armv7l' ) echo -n '--os linux --arch arm --variant v7';; \
-	'x86_64' ) echo -n '--os linux --arch amd64';; \
+	'aarch64' ) echo -n '--os linux --arch arm64'            ;; \
+	'armhf'   ) echo -n '--os linux --arch arm --variant v6' ;; \
+	'armv7l'  ) echo -n '--os linux --arch arm --variant v7' ;; \
+	'i386'    ) echo -n '--os linux --arch 386'              ;; \
+	'loong64' ) echo -n '--os linux --arch loong64'          ;; \
+	'ppc64le' ) echo -n '--os linux --arch ppc64le'          ;; \
+	'riscv64' ) echo -n '--os linux --arch riscv64'          ;; \
+	's390x'   ) echo -n '--os linux --arch s390x'            ;; \
+	'x86_64'  ) echo -n '--os linux --arch amd64'            ;; \
 	#
 # $1 = ARCH
 define get_manifest_platform
 $(shell case "$(1)" in $(MANIFEST_PLATFORM_MAP) esac)
 endef
 
+# maps binfmt architecture to install for ARCH
+BINFMT_ARCH_MAP := \
+	'aarch64' ) echo -n 'arm64'   ;; \
+	'armhf'   ) echo -n 'arm'     ;; \
+	'armv7l'  ) echo -n 'arm'     ;; \
+	'i386'    ) echo -n '386'     ;; \
+	'loong64' ) echo -n 'loong64' ;; \
+	'ppc64le' ) echo -n 'ppc64le' ;; \
+	'riscv64' ) echo -n 'riscv64' ;; \
+	's390x'   ) echo -n 's390x'   ;; \
+	'x86_64'  ) echo -n 'amd64'   ;; \
+	*         ) echo -n '*'       ;; \
+    #
+define get_binfmt_arch
+$(shell case "$(ARCH)" in $(BINFMT_ARCH_MAP) esac)
+endef
+
 # gets latest release version from https://ftp.gnu.org/gnu/glibc/
-# $1 = architecture (format: armhf for armv6l, armv7 for armv7l, x86_64 and aarch64 are used as-is.)
+# $1 = filename
 # and dont refetch if file newer than 8 hours
 define get_glibc_version
 $(shell \
-	if [ ! -f $(CURDIR)/GLIBCVERSION ] \
-	|| [ "$$(( ($$(date +%s) - $$(stat $(CURDIR)/GLIBCVERSION  -c %Y)) / 3600 ))" -gt 8 ]; \
+	URL=https://ftp.gnu.org/gnu/glibc/;
+	OFILE=$(CURDIR)/$(if $(1),$(1),GLIBCVERSION);
+	if [ ! -f $${OFILE} ] \
+	|| [ "$$(( ($$(date +%s) - $$(stat $${OFILE}  -c %Y)) / 3600 ))" -gt 8 ]; \
 	then \
-		curl -jsSL \
-		https://ftp.gnu.org/gnu/glibc/ \
-		2>/dev/null \
+		curl -jsSL $${URL} 2>/dev/null \
 		| grep -Eo   '>glibc-([0-9\.]+).tar.gz' \
 		| sed  -Ee 's!>glibc-([0-9\.]+).tar.gz!\1!' \
 		| sort -uV \
 		| tail -n 1 > $(CURDIR)/GLIBCVERSION;
 	fi;
-	cat $(CURDIR)/GLIBCVERSION;)
+	cat $${OFILE};)
 endef
 # grep -oP "(?<=glibc-)[0-9\.]+(?=.tar.gz)" does not work in alpine (no -P)
 # replaced by grep + sed
 
 # maps apk build platform to ARCH tags
-SRC_ARCH_MAP := \
-	'aarch64') echo -n 'aarch64';; \
-	'armhf'  ) echo -n 'armhf'  ;; \
-	'armv7l' ) echo -n 'armv7'  ;; \
-	'x86_64' ) echo -n 'x86_64' ;; \
+APKBUILD_ARCH_MAP := \
+	'aarch64' ) echo -n 'aarch64'    ;; \
+	'armhf'   ) echo -n 'armhf'      ;; \
+	'armv7l'  ) echo -n 'armv7'      ;; \
+	'i386'    ) echo -n 'x86'        ;; \
+	'loong64' ) echo -n 'loongarch64';; \
+	'ppc64le' ) echo -n 'ppc64le'    ;; \
+	'riscv64' ) echo -n 'riscv64'    ;; \
+	's390x'   ) echo -n 's390x'      ;; \
+	'x86_64'  ) echo -n 'x86_64'     ;; \
     #
-define get_src_arch
-$(shell case "$(ARCH)" in $(SRC_ARCH_MAP) esac)
+define get_apkbuild_arch
+$(shell case "$(ARCH)" in $(APKBUILD_ARCH_MAP) esac)
 endef
 # -- }}}

@@ -1,18 +1,13 @@
 # syntax=docker/dockerfile:1
-# reference:
-#   https://www.gnu.org/software/libc/manual/html_node/Installation.html
-#   https://github.com/sgerrand/docker-glibc-builder/issues/20
-#   https://github.com/Lauri-Nomme/alpine-glibc-xb/blob/master/Dockerfile
-#   https://github.com/jvasileff/alpine-pkg-glibc-armhf/blob/master/build-with-docker.sh
 #
-ARG COMPILERSRC=ubuntu:latest
+ARG COMPILERIMAGE=debian:sid-slim
 ARG IMAGEBASE=frommakefile
 #
-# {{{ -- fetch and compile source using ubuntu image
-FROM ${COMPILERSRC} as glibc-compiler
+# {{{ -- fetch and compile source using a glibc-supported image
+FROM ${COMPILERIMAGE} as glibc-compiler
 #
 ARG GLIBCVERSION=2.31
-ARG NPROC=6
+ARG NPROC=8
 #
 ENV \
     DEBIAN_FRONTEND=noninteractive \
@@ -99,23 +94,30 @@ ARG GLIBC_RELEASE=0
 ARG GLIBCVERSION=2.31
 # ARG PACKAGER=woahbase
 #
+# keep a copy of built package(s) (in /opt/glibc) for future need??
+# COPY --from=glibc-compiler /glibc-bin-${GLIBCVERSION}.tar.gz /opt/glibc/
+# COPY --from=glibc-compiler /glibc-bin-${GLIBCVERSION}.sha512sum /opt/glibc/
+COPY --from=glibc-alpine-builder /packages/builder/${GLIBCARCH}/glibc-${GLIBCVERSION}-r${GLIBC_RELEASE}.apk /opt/glibc/
+COPY --from=glibc-alpine-builder /packages/builder/${GLIBCARCH}/glibc-bin-${GLIBCVERSION}-r${GLIBC_RELEASE}.apk /opt/glibc/
+COPY --from=glibc-alpine-builder /packages/builder/${GLIBCARCH}/glibc-i18n-${GLIBCVERSION}-r${GLIBC_RELEASE}.apk /opt/glibc/
 # COPY --from=glibc-alpine-builder /etc/apk/keys/${PACKAGER}.rsa.pub /etc/apk/keys/${PACKAGER}.rsa.pub
-COPY --from=glibc-alpine-builder /packages/builder/${GLIBCARCH}/glibc-${GLIBCVERSION}-r${GLIBC_RELEASE}.apk /tmp/
-COPY --from=glibc-alpine-builder /packages/builder/${GLIBCARCH}/glibc-bin-${GLIBCVERSION}-r${GLIBC_RELEASE}.apk /tmp/
-COPY --from=glibc-alpine-builder /packages/builder/${GLIBCARCH}/glibc-i18n-${GLIBCVERSION}-r${GLIBC_RELEASE}.apk /tmp/
 #
 RUN set -xe \
     && apk add -Uu --no-cache libstdc++ \
-    && apk add --allow-untrusted --force-overwrite /tmp/glibc-*.apk \
+    && apk add --allow-untrusted --force-overwrite /opt/glibc/glibc-*.apk \
     && ( /usr/glibc-compat/bin/localedef --force --inputfile POSIX --charmap UTF-8 C.UTF-8 || true ) \
     && echo "export LANG=C.UTF-8" > /etc/profile.d/locale.sh \
     && /usr/glibc-compat/sbin/ldconfig /lib /usr/glibc-compat/lib \
     # && echo 'hosts: files mdns4_minimal [NOTFOUND=return] dns mdns4' > /etc/nsswitch.conf \
-    && rm -rf /var/cache/apk/* /tmp/*
-    # /etc/apk/keys/${PACKAGER}.rsa.pub
+    && rm -rf /var/cache/apk/* /tmp/* /opt/glibc
+        # /etc/apk/keys/${PACKAGER}.rsa.pub
 # }}} --
 #
 ENV PATH=/usr/glibc-compat/sbin:/usr/glibc-compat/bin:${PATH}
 #
 # ENTRYPOINT ["/init"]
 # CMD ["/bin/bash"]
+#
+# no need to preserve built packages (in /opt/glibc) on child images
+# ONBUILD RUN set -xe \
+#     && rm -rf /opt/glibc
