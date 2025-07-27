@@ -15,11 +15,27 @@ triggers="$pkgname-bin.trigger=/lib:/usr/lib:/usr/glibc-compat/lib"
 makedepends=""
 options="!check lib64" # No test suite
 
+# libc6-compat is now gcompat
+# https://gitlab.alpinelinux.org/alpine/aports/-/blob/3.22-stable/main/gcompat/APKBUILD
+# https://sourceware.org/glibc/wiki/ABIList
+case "$CARCH" in
+aarch64     ) _ld="ld-linux-aarch64.so.1"         ;;
+armhf       ) _ld="ld-linux-armhf.so.3"           ;;
+armv7       ) _ld="ld-linux-armhf.so.3"           ;;
+loongarch64 ) _ld="ld-linux-loongarch-lp64d.so.1" ;; # hardfloat
+ppc64le     ) _ld="ld64.so.2"                     ;;
+riscv64     ) _ld="ld-linux-riscv64-lp64d.so.1"   ;; # hardfloat
+s390x       ) _ld="ld64.so.1"                     ;;
+x86         ) _ld="ld-linux.so.2"                 ;;
+x86_64      ) _ld="ld-linux-x86-64.so.2"          ;;
+esac
+
 package() {
   mkdir -p "$pkgdir/lib" "$pkgdir/usr/glibc-compat/lib/locale" "$pkgdir"/usr/glibc-compat/lib "$pkgdir"/etc
-  cp -a "$srcdir"/usr "$pkgdir"
-  cp "$srcdir"/nsswitch.conf "$pkgdir"/etc/nsswitch.conf
-  cp "$srcdir"/ld.so.conf "$pkgdir"/usr/glibc-compat/etc/ld.so.conf
+  cp -av "$srcdir"/usr "$pkgdir"
+  cp -v "$srcdir"/nsswitch.conf "$pkgdir"/etc/nsswitch.conf
+  cp -v "$srcdir"/ld.so.conf "$pkgdir"/usr/glibc-compat/etc/ld.so.conf
+
   rm -rfv "$pkgdir"/usr/glibc-compat/etc/rpc
   rm -rfv "$pkgdir"/usr/glibc-compat/bin
   rm -rfv "$pkgdir"/usr/glibc-compat/sbin
@@ -28,14 +44,13 @@ package() {
   rm -rfv "$pkgdir"/usr/glibc-compat/lib/audit
   rm -rfv "$pkgdir"/usr/glibc-compat/share
   rm -rfv "$pkgdir"/usr/glibc-compat/var
-  LINKER_NAME=$(basename "$pkgdir"/usr/glibc-compat/lib/ld-linux*)
-  echo "Detected linker name: $LINKER_NAME"
+  # LINKER_NAME=$(basename "$pkgdir"/usr/glibc-compat/lib/ld-linux*)
+  LINKER_NAME=$_ld
+  echo "Linker name: $LINKER_NAME"
   ln -sfv /usr/glibc-compat/lib/$LINKER_NAME "$pkgdir"/lib/$LINKER_NAME
-  # libc6-compat is now gcompat
-  # https://gitlab.alpinelinux.org/alpine/aports/-/blob/3.22-stable/main/gcompat/APKBUILD
   # Required symlink on 64-bit platforms
   case "$CARCH" in
-    x86_64|ppc64le|aarch64|s390x|riscv64|loongarch64)
+    aarch64|loongarch64|ppc64le|riscv64|s390x|x86_64)
       mkdir -p "$pkgdir"/lib64 "$pkgdir"/usr/glibc-compat/lib64
       ln -sfv /usr/glibc-compat/lib/$LINKER_NAME "$pkgdir"/lib64/$LINKER_NAME
       ln -sfv ../lib/$LINKER_NAME "$pkgdir"/usr/glibc-compat/lib64/$LINKER_NAME

@@ -1,11 +1,26 @@
 # syntax=docker/dockerfile:1
 #
-ARG COMPILERIMAGE=debian:sid-slim
 ARG IMAGEBASE=frommakefile
 #
-# {{{ -- fetch and compile source using a glibc-supported image
-FROM ${COMPILERIMAGE} AS glibc-compiler
+# {{{ -- download and use raspbian legacy rootfs as baseimage
+FROM ${IMAGEBASE} AS raspberry-pi-os-legacy-lite-getter
+RUN set -xe \
+    && apk add \
+        curl \
+        xz \
+    && mkdir /rootfs \
+    && curl \
+        --retry 3 --retry-all-errors \
+        -fSL https://downloads.raspberrypi.org/raspios_lite_armhf/root.tar.xz | tar xJ -C /rootfs
 #
+FROM scratch AS baseimage
+COPY --from=raspberry-pi-os-legacy-lite-getter /rootfs/ /
+RUN set -xe \
+    && uname -a
+# }}} --
+#
+# {{{ -- fetch and compile source using ubuntu image
+FROM baseimage AS glibc-compiler
 ARG GLIBCVERSION=2.31
 ARG NPROC=8
 #
@@ -30,6 +45,7 @@ RUN set -xe \
         --libdir=${PREFIX_DIR}/lib \
         --libexecdir=${PREFIX_DIR}/lib \
         # --enable-multi-arch \
+        --host=armv6-linux \
         --enable-stack-protector=strong \
     && make -j${NPROC} \
     && make install \
@@ -110,7 +126,7 @@ RUN set -xe \
     && /usr/glibc-compat/sbin/ldconfig /lib /usr/glibc-compat/lib \
     # && echo 'hosts: files mdns4_minimal [NOTFOUND=return] dns mdns4' > /etc/nsswitch.conf \
     && rm -rf /var/cache/apk/* /tmp/* /opt/glibc
-        # /etc/apk/keys/${PACKAGER}.rsa.pub
+    # /etc/apk/keys/${PACKAGER}.rsa.pub
 # }}} --
 #
 ENV PATH=/usr/glibc-compat/sbin:/usr/glibc-compat/bin:${PATH}
