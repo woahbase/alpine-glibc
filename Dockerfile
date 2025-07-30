@@ -14,6 +14,7 @@ ENV \
     PREFIX_DIR=/usr/glibc-compat
 #
 RUN set -xe \
+    && rm -rf /var/lib/apt/lists/* \
     && apt-get update \
     && apt-get install -y build-essential curl openssl gawk bison python3 gettext texinfo \
     && mkdir -p /glibc/build \
