@@ -16,7 +16,7 @@ ENV \
 RUN set -xe \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get update \
-    && apt-get install -y build-essential curl openssl gawk bison python3 gettext texinfo \
+    && apt-get install -y binutils build-essential curl openssl gawk bison python3 gettext texinfo \
     && mkdir -p /glibc/build \
     && echo "Using GLIBC Version: $GLIBCVERSION" \
     && curl \

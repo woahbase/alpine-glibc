@@ -11,7 +11,9 @@ RUN set -xe \
     && mkdir /rootfs \
     && curl \
         --retry 3 --retry-all-errors \
-        -fSL https://downloads.raspberrypi.org/raspios_lite_armhf/root.tar.xz | tar xJ -C /rootfs
+        -fSL https://github.com/debuerreotype/docker-debian-artifacts/raw/refs/heads/dist-arm32v7/sid/oci/blobs/rootfs.tar.gz | tar -xz -C /rootfs
+        # 20250730: ld version (from binutils 2.35) in raspios is unsupported for glibc builds >=2.42
+        # -fSL https://downloads.raspberrypi.org/raspios_lite_armhf/root.tar.xz | tar xJ -C /rootfs
 #
 FROM scratch AS baseimage
 COPY --from=raspberry-pi-os-legacy-lite-getter /rootfs/ /
@@ -31,7 +33,7 @@ ENV \
 RUN set -xe \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get update \
-    && apt-get install -y build-essential curl openssl gawk bison python3 gettext texinfo \
+    && apt-get install -y binutils build-essential curl openssl gawk bison python3 gettext texinfo \
     && mkdir -p /glibc/build \
     && echo "Using GLIBC Version: $GLIBCVERSION" \
     && curl \
